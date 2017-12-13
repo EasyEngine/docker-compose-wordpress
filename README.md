@@ -1,4 +1,4 @@
-# Docker-Compose Wordpress
+# Docker-Compose WordPress
 
 ### Requirements
 
