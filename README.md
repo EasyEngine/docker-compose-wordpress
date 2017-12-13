@@ -6,13 +6,4 @@
 2. [Docker Compose](https://docs.docker.com/compose/install/)
 
 ### Usage
-
-To start the containers.
-```
-docker-compose up -d
-```
-
-To check logs of the containers,
-```
-docker-compose logs -f
-```
+Instructions are given in the README for each type.
