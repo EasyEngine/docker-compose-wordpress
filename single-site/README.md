@@ -2,12 +2,8 @@
 
 ### Usage
 
-To start the containers.
-```
-docker-compose up -d
-```
+1. Start website - `docker-compose up -d`.
+2. Stop website - `docker-compose stop`
+3. Check logs - `docker-compose logs -f`
 
-To check logs of the containers,
-```
-docker-compose logs -f
-```
+Website will be available at [http://localhost]()

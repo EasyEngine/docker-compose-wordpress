@@ -5,5 +5,6 @@
 1. [Docker](https://www.docker.com/)
 2. [Docker Compose](https://docs.docker.com/compose/install/)
 
-### Usage
-Instructions are given in the README for each type.
+### Examples
+1. [Single Site](single-site) - Single wordpress site.
+1. [Multiple Site](single-site) - Multiple separate wordpress sites.
