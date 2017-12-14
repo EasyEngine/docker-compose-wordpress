@@ -11,7 +11,7 @@ docker run --name nginx-proxy -d -p 80:80 -v /var/run/docker.sock:/tmp/docker.so
 ```
 project_name=site1.test
 git clone https://github.com/EasyEngine/docker-compose-wordpress.git $project_name
-cd $project_name
+cd $project_name/multiple-sites
 sed -i "s/\(VIRTUAL_HOST: \)\(.*\)/\1$project_name/; s/\(name: \)\(.*\)/\1$project_name/" docker-compose.yml
 docker network create $project_name
 docker network connect $project_name nginx-proxy

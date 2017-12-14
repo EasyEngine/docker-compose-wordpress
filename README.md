@@ -7,4 +7,4 @@
 
 ### Examples
 1. [Single Site](single-site) - Single wordpress site.
-1. [Multiple Site](single-site) - Multiple separate wordpress sites.
+1. [Multiple Site](multiple-sites) - Multiple separate wordpress sites.
