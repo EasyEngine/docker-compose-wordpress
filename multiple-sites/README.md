@@ -28,7 +28,7 @@ cd $project_name
 docker-compose stop
 ```
 
-4. To stop a site, follow
+4. To delete a site, follow
 ```
 project_name=site1.test
 cd $project_name
