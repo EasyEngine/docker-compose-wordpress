@@ -1,6 +1,14 @@
 version: '3'
 
 services:
+  mailcatcher:
+    image: schickling/mailcatcher
+    restart: always
+    environment:
+      VIRTUAL_HOST: mail.site1.test
+    networks:
+     - site-network
+
   mysql:
     image: mysql:latest
     restart: always
@@ -15,7 +23,7 @@ services:
      - site-network
 
   php:
-    image: wordpress:php7.1-fpm
+    image: rtcamp/wordpress
     depends_on:
       - mysql
     restart: always
