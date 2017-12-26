@@ -5,7 +5,9 @@ services:
     image: schickling/mailcatcher
     restart: always
     environment:
-      VIRTUAL_HOST: mail.site1.test
+      MAILCATCHER_PORT: 1025
+      VIRTUAL_HOST: mail.qa-pmc.li.rtdemo.in
+      VIRTUAL_PORT: 1080
     networks:
      - site-network
 
