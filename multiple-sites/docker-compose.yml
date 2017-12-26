@@ -1,13 +1,12 @@
 version: '3'
 
 services:
-  mailcatcher:
-    image: schickling/mailcatcher
+  mail:
+    image: mailhog/mailhog
     restart: always
     environment:
-      MAILCATCHER_PORT: 1025
       VIRTUAL_HOST: mail.qa-pmc.li.rtdemo.in
-      VIRTUAL_PORT: 1080
+      VIRTUAL_PORT: 8025
     networks:
      - site-network
 
