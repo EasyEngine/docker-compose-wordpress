@@ -4,8 +4,9 @@ services:
   mail:
     image: mailhog/mailhog
     restart: always
+    command: ["-invite-jim=false"]
     environment:
-      VIRTUAL_HOST: mail.qa-pmc.li.rtdemo.in
+      VIRTUAL_HOST: mail.site1.test
       VIRTUAL_PORT: 8025
     networks:
      - site-network
