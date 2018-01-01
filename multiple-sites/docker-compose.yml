@@ -17,10 +17,10 @@ services:
     volumes:
       - "./data/db:/var/lib/mysql"
     environment:
-      MYSQL_ROOT_PASSWORD: password
-      MYSQL_DATABASE: wordpress
-      MYSQL_USER: wordpress
-      MYSQL_PASSWORD: password
+      MYSQL_ROOT_PASSWORD
+      MYSQL_DATABASE
+      MYSQL_USER
+      MYSQL_PASSWORD
     networks:
      - site-network
 
@@ -33,8 +33,8 @@ services:
       - "./wordpress:/var/www/html"
       - "./config/php-fpm/php.ini:/usr/local/etc/php/php.ini"
     environment:
-      WORDPRESS_DB_USER: wordpress
-      WORDPRESS_DB_PASSWORD: password
+      WORDPRESS_DB_USER
+      WORDPRESS_DB_PASSWORD
     networks:
      - site-network
 

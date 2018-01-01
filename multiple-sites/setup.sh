@@ -73,6 +73,7 @@ pushd /var/www > /dev/null 2>&1
 		###
 		#  Start the containers
 		###
+		mv .env.example .env
 		echo "Starting containers..." && sleep 1
 		docker-compose up -d
 		chown -R www-data: wordpress

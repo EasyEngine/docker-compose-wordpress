@@ -16,6 +16,9 @@ sed -i "s/\(VIRTUAL_HOST: \)\(site1.test\)/\1$project_name/; s/\(VIRTUAL_HOST: \
 docker network create $project_name
 docker network connect $project_name nginx-proxy
 echo "127.0.0.1 $project_name" | sudo tee -a /etc/hosts
+
+# Copy .env.example and edit the values.
+mv .env.example .env
 docker-compose up -d
 ```
 Website will be available at [http://site1.test]()
