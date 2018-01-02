@@ -60,6 +60,7 @@ pushd /var/www > /dev/null 2>&1
 		ls -al
 		sed -i "s/\(VIRTUAL_HOST: \)\(site1.test\)/\1$project_name/; s/\(VIRTUAL_HOST: \)\(mail.site1.test\)/\1mail.$project_name/; s/\(name: \)\(.*\)/\1$project_name/" docker-compose.yml
 		if [[ "$deployment_method" == "deployer" ]]; then
+			mv .env.deployer wordpress/.env
 			sed -i 's#html#html/current#' config/nginx/default.conf
 			sed -i '30a \    entrypoint: ["/bin/bash", "-c"]\n    command: ["php-fpm"]' docker-compose.yml
 		fi
