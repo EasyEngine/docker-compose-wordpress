@@ -12,7 +12,7 @@ docker run --name nginx-proxy --restart always -d -p 80:80 -v /var/run/docker.so
 project_name=site1.test
 git clone https://github.com/EasyEngine/docker-compose-wordpress.git $project_name
 cd $project_name/multiple-sites
-sed -i "s/\(VIRTUAL_HOST: \)\(site1.test\)/\1$project_name/; s/\(VIRTUAL_HOST: \)\(mail.site1.test\)/\1mail.$project_name/; s/\(name: \)\(.*\)/\1$project_name/" docker-compose.yml
+sed -i "s/\(VIRTUAL_HOST=\)\(site1.test\)/\1$project_name/; s/\(VIRTUAL_HOST=\)\(mail.site1.test\)/\1mail.$project_name/;s/\(name: \)\(.*\)/\1$project_name/" docker-compose.yml
 docker network create $project_name
 docker network connect $project_name nginx-proxy
 echo "127.0.0.1 $project_name" | sudo tee -a /etc/hosts

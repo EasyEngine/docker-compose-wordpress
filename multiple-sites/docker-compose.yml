@@ -6,8 +6,8 @@ services:
     restart: always
     command: ["-invite-jim=false"]
     environment:
-      VIRTUAL_HOST: mail.site1.test
-      VIRTUAL_PORT: 8025
+      - VIRTUAL_HOST=mail.site1.test
+      - VIRTUAL_PORT=8025
     networks:
      - site-network
 
@@ -17,10 +17,10 @@ services:
     volumes:
       - "./data/db:/var/lib/mysql"
     environment:
-      MYSQL_ROOT_PASSWORD
-      MYSQL_DATABASE
-      MYSQL_USER
-      MYSQL_PASSWORD
+      - MYSQL_ROOT_PASSWORD
+      - MYSQL_DATABASE
+      - MYSQL_USER
+      - MYSQL_PASSWORD
     networks:
      - site-network
 
@@ -33,8 +33,8 @@ services:
       - "./wordpress:/var/www/html"
       - "./config/php-fpm/php.ini:/usr/local/etc/php/php.ini"
     environment:
-      WORDPRESS_DB_USER
-      WORDPRESS_DB_PASSWORD
+      - WORDPRESS_DB_USER
+      - WORDPRESS_DB_PASSWORD
     networks:
      - site-network
 
@@ -44,7 +44,7 @@ services:
       - php
     restart: always
     environment:
-      VIRTUAL_HOST: site1.test
+      - VIRTUAL_HOST=site1.test
     volumes:
       - "./wordpress:/var/www/html"
       - "./config/nginx/default.conf:/etc/nginx/conf.d/default.conf"

@@ -55,10 +55,11 @@ pushd /var/www > /dev/null 2>&1
 	git clone https://github.com/EasyEngine/docker-compose-wordpress.git "$tmpdir"
 	mkdir "$project_name"
 	rsync -a $tmpdir/multiple-sites/ $project_name
+	rm -rf $tmpdir
 	pushd $project_name > /dev/null 2>&1
 		pwd
 		ls -al
-		sed -i "s/\(VIRTUAL_HOST: \)\(site1.test\)/\1$project_name/; s/\(VIRTUAL_HOST: \)\(mail.site1.test\)/\1mail.$project_name/; s/\(name: \)\(.*\)/\1$project_name/" docker-compose.yml
+		sed -i "s/\(VIRTUAL_HOST=\)\(site1.test\)/\1$project_name/; s/\(VIRTUAL_HOST=\)\(mail.site1.test\)/\1mail.$project_name/;s/\(name: \)\(.*\)/\1$project_name/" docker-compose.yml
 		if [[ "$deployment_method" == "deployer" ]]; then
 			mv .env.deployer wordpress/.env
 			sed -i 's#html#html/current#' config/nginx/default.conf
