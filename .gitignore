@@ -1,4 +1,7 @@
-wordpress
-data
+app
 logs
-test
+test*
+codeception.yml
+composer.json
+logo.jpg
+vendor
