@@ -1,0 +1,126 @@
+#!/usr/bin/env bash
+
+PROJECT_NAME="eev4"
+
+# runs the given command as root (detects if we are root already)
+runAsRoot() {
+	local CMD="$*"
+
+	if [ $EUID -ne 0 ]; then
+		CMD="sudo $CMD"
+	fi
+
+	$CMD
+}
+
+# help provides possible cli arguments
+help () {
+	echo -e "\nUsage:  eev4 [Global Options]"
+	echo -e "\nGlobal Options:"
+	echo -e "\t[--help|-h ]\t\tprints this help"
+
+	echo -e "\nCommands: "
+	echo -e "\tcreate\t\t\tCreate new site"
+	echo -e "\twp\t\t\tUse wp-cli with a site"
+
+	echo -e "\nUsage:  eev4 create SITE [Options]"
+	echo -e "\nOptions:"
+	echo -e "\t[--wp ]\t\t\tWordPress Site"
+	echo -e "\t[--wpsubdir ]\t\tWordPress Multisite with Subdirectory"
+	echo -e "\t[--wpsubdomain ]\tWordPress Multisite with Subdomains"
+
+	echo -e "\nUsage:  eev4 wp SITE [ARG...]"
+	echo -e "\te.g. eev4 wp example.com theme list"
+}
+
+singleWordPress() {
+	echo "Installing WordPress site"
+}
+
+multisiteSubdirectory() {
+	echo "Installing WordPress Multisite with Subdirectory"
+}
+
+multisiteSubdomain() {
+	echo "Installing WordPress Multisite with Subdomain"
+}
+
+# fail_trap is executed if an error occurs.
+fail_trap() {
+  result=$?
+  if [ "$result" != "0" ]; then
+    if [[ -n "$INPUT_ARGUMENTS" ]]; then
+      echo "Failed to run with the arguments provided: $INPUT_ARGUMENTS"
+      help
+    else
+      help
+    fi
+    echo -e "\tFor support, go to https://github.com/EasyEngine/docker-compose-wordpress."
+  fi
+  exit $result
+}
+
+
+# Execution
+
+#Stop execution on any error
+trap "fail_trap" EXIT
+set -e
+
+# Parsing input arguments (if any)
+export INPUT_ARGUMENTS="${@}"
+set -u
+if [[ $# -eq 0 ]]; then
+	help
+fi
+while [[ $# -gt 0 ]]; do
+	case $1 in
+		'--help'|-h)
+			help
+			exit 0
+			;;
+		'create')
+			shift
+			if [[ $# -ne 0 ]]; then
+				export SITE_NAME="${1}"
+				shift
+				if [[ $# -ne 0 ]]; then
+					case $1 in
+						'--wp')
+							singleWordPress
+							exit 0
+							;;
+						'--wpsubdir')
+							multisiteSubdirectory
+							exit 0
+							;;
+						'--wpsubdomain')
+							multisiteSubdomain
+							exit 0
+							;;
+					esac
+					shift
+				else
+					echo -e "Please provide type of site you want to create."
+					exit 0
+				fi
+			else
+				echo -e "Please provide name of site."
+				exit 0
+			fi
+			;;
+		'wp')
+			shift
+			if [[ $# -ne 0 ]]; then
+				export SITE_NAME="${1}"
+			else
+				echo -e "Please provide name of site."
+				exit 0
+			fi
+			;;
+		*) exit 1
+			;;
+	esac
+	shift
+done
+set +u
