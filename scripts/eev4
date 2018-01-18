@@ -2,6 +2,9 @@
 
 PROJECT_NAME="eev4"
 EE_INSTALL_DIR="/opt/$PROJECT_NAME"
+ETC_HOSTS=/etc/hosts
+LOCALHOST_IP="127.0.0.1"
+WEBROOT="/var/www"
 
 # runs the given command as root (detects if we are root already)
 runAsRoot() {
@@ -22,19 +25,20 @@ help () {
 
 	echo -e "\nCommands: "
 	echo -e "\tcreate\t\t\tCreate new site"
+	echo -e "\tdelete\t\t\tDelete existing site"
 
 	echo -e "\nUsage:  eev4 create SITE [Options]"
 	echo -e "\nOptions:"
 	echo -e "\t[--wp ]\t\t\tWordPress Site"
 	echo -e "\t[--wpsubdir ]\t\tWordPress Multisite with Subdirectory"
 	echo -e "\t[--wpsubdomain ]\tWordPress Multisite with Subdomains"
+
+	echo -e "\nUsage:  eev4 delete SITE"
 }
 
 singleWordPress() {
 	echo "Installing WordPress site $SITE_NAME"
-	WEBROOT="/var/www"
 	mkdir -p "$WEBROOT" > /dev/null 2>&1
-	runAsRoot chown -R www-data: "$WEBROOT"
 
 	###
 	#  Setup site configuration
@@ -44,6 +48,7 @@ singleWordPress() {
 	cp "$EE_INSTALL_DIR/docker-compose.yml" "$WEBROOT/$SITE_NAME"
 	cp -r "$EE_INSTALL_DIR/config" "$WEBROOT/$SITE_NAME"
 	mv "$WEBROOT/$SITE_NAME/config/.env.example" "$WEBROOT/$SITE_NAME/.env"
+	sed -i.bak "s/\(VIRTUAL_HOST=\)\(site1.test\)/\1$SITE_NAME/" "$WEBROOT/$SITE_NAME/.env"
 
 	###
 	#  Setup site networking
@@ -56,9 +61,15 @@ singleWordPress() {
 	###
 	#  Start the containers
 	###
-	echo "Starting containers..." && sleep 1
+	pushd "$WEBROOT/$SITE_NAME" > /dev/null 2>&1
 	docker-compose up -d
-	chown -R www-data: "$WEBROOT/$SITE_NAME/wordpress"
+	popd > /dev/null 2>&1
+
+	echo "$SITE_NAME created."
+	read -p "Would you like to add domain to /etc/host?(y/N) " -n 1 -r
+	if [[ $REPLY =~ ^[Yy]$ ]]; then
+		addHost "$SITE_NAME"
+	fi
 }
 
 multisiteSubdirectory() {
@@ -67,6 +78,48 @@ multisiteSubdirectory() {
 
 multisiteSubdomain() {
 	echo "Installing WordPress Multisite with Subdomain"
+}
+
+deleteSingleWordPress() {
+	read -p "Are you sure you want to delete the site?(y/N) " -n 1 -r
+	if [[ $REPLY =~ ^[Yy]$ ]]; then
+		pushd "$WEBROOT/$SITE_NAME" > /dev/null 2>&1
+		docker-compose down -v
+		popd > /dev/null 2>&1
+
+		sudo rm -rf "$WEBROOT/$SITE_NAME"
+		docker network disconnect "$SITE_NAME" nginx-proxy
+		docker network rm "$SITE_NAME"
+	fi
+}
+
+removeHost() {
+	HOSTNAME=$1
+	if [ -n "$(grep $HOSTNAME /etc/hosts)" ]
+	then
+			echo "$HOSTNAME Found in your $ETC_HOSTS, Removing now...";
+			sudo sed -i".bak" "/$HOSTNAME/d" $ETC_HOSTS
+	else
+			echo "$HOSTNAME was not found in your $ETC_HOSTS";
+	fi
+}
+
+addHost() {
+	HOSTNAME=$1
+	HOSTS_LINE="$LOCALHOST_IP\t$HOSTNAME"
+	echo
+	if [ -n "$(grep $HOSTNAME /etc/hosts)" ]; then
+		echo "$HOSTNAME already exists : $(grep $HOSTNAME $ETC_HOSTS)"
+	else
+		echo "Adding $HOSTNAME to your $ETC_HOSTS";
+		sudo -- sh -c -e "echo '$HOSTS_LINE' >> /etc/hosts";
+
+		if [ -n "$(grep $HOSTNAME /etc/hosts)" ]; then
+			echo -e "$HOSTNAME was added succesfully \n $(grep $HOSTNAME /etc/hosts)";
+		else
+			echo "Failed to add $HOSTNAME, Try again!";
+		fi
+	fi
 }
 
 # check if ports 80 and 443 are free.
@@ -112,17 +165,17 @@ runNginxProxy() {
 
 # fail_trap is executed if an error occurs.
 fail_trap() {
-  result=$?
-  if [ "$result" != "0" ]; then
-    if [[ -n "$INPUT_ARGUMENTS" ]]; then
-      echo "Failed to run with the arguments provided: $INPUT_ARGUMENTS"
-      help
-    else
-      help
-    fi
-    echo -e "\tFor support, go to https://github.com/EasyEngine/docker-compose-wordpress."
-  fi
-  exit $result
+	result=$?
+	if [ "$result" != "0" ]; then
+		if [[ -n "$INPUT_ARGUMENTS" ]]; then
+			echo "Failed to run with the arguments provided: $INPUT_ARGUMENTS"
+			help
+		else
+			help
+		fi
+		echo -e "\tFor support, go to https://github.com/EasyEngine/docker-compose-wordpress."
+	fi
+	exit $result
 }
 
 
@@ -173,6 +226,16 @@ while [[ $# -gt 0 ]]; do
 				echo -e "Please provide name of site."
 				exit 0
 			fi
+			;;
+		'delete')
+				shift
+				if [[ $# -ne 0 ]]; then
+					export SITE_NAME="${1}"
+					deleteSingleWordPress
+				else
+					echo -e "Please provide name of site."
+					exit 0
+				fi
 			;;
 		'wp')
 			shift
