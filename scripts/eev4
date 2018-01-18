@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 PROJECT_NAME="eev4"
+EE_INSTALL_DIR="/opt/$PROJECT_NAME"
 
 # runs the given command as root (detects if we are root already)
 runAsRoot() {
@@ -21,20 +22,43 @@ help () {
 
 	echo -e "\nCommands: "
 	echo -e "\tcreate\t\t\tCreate new site"
-	echo -e "\twp\t\t\tUse wp-cli with a site"
 
 	echo -e "\nUsage:  eev4 create SITE [Options]"
 	echo -e "\nOptions:"
 	echo -e "\t[--wp ]\t\t\tWordPress Site"
 	echo -e "\t[--wpsubdir ]\t\tWordPress Multisite with Subdirectory"
 	echo -e "\t[--wpsubdomain ]\tWordPress Multisite with Subdomains"
-
-	echo -e "\nUsage:  eev4 wp SITE [ARG...]"
-	echo -e "\te.g. eev4 wp example.com theme list"
 }
 
 singleWordPress() {
-	echo "Installing WordPress site"
+	echo "Installing WordPress site $SITE_NAME"
+	WEBROOT="/var/www"
+	mkdir -p "$WEBROOT" > /dev/null 2>&1
+	runAsRoot chown -R www-data: "$WEBROOT"
+
+	###
+	#  Setup site configuration
+	###
+	echo "Configuring project..." && sleep 1
+	mkdir -p "$WEBROOT/$SITE_NAME" > /dev/null 2>&1
+	cp "$EE_INSTALL_DIR/docker-compose.yml" "$WEBROOT/$SITE_NAME"
+	cp -r "$EE_INSTALL_DIR/config" "$WEBROOT/$SITE_NAME"
+	mv "$WEBROOT/$SITE_NAME/config/.env.example" "$WEBROOT/$SITE_NAME/.env"
+
+	###
+	#  Setup site networking
+	###
+	echo "Configuring network..." && sleep 1
+	runNginxProxy
+	docker network create $SITE_NAME
+	docker network connect $SITE_NAME nginx-proxy
+
+	###
+	#  Start the containers
+	###
+	echo "Starting containers..." && sleep 1
+	docker-compose up -d
+	chown -R www-data: "$WEBROOT/$SITE_NAME/wordpress"
 }
 
 multisiteSubdirectory() {
@@ -43,6 +67,47 @@ multisiteSubdirectory() {
 
 multisiteSubdomain() {
 	echo "Installing WordPress Multisite with Subdomain"
+}
+
+# check if ports 80 and 443 are free.
+portsFree() {
+	ports=( 80 443 )
+	free=0
+	for port in "${ports[@]}" ; do
+		# count the number of occurrences of $port in output: 1 = in use; 0 = not in use
+		result=$(ss -ln src :$port | grep -Ec -e "\<$port\>")
+		if [ "$result" -eq 1 ]; then
+			free=1
+		fi
+	done
+	return $free
+}
+
+# check if nginx-proxy container is running
+isNginxProxyRunning() {
+	docker inspect -f '{{.State.Running}}' nginx-proxy > /dev/null 2>&1
+	if [[ $? == 0 ]]; then
+		return 0
+	else
+		# For any exit code other than 0, return 1.
+		return 1
+	fi
+}
+
+# run jwilder/nginx-proxy container
+runNginxProxy() {
+	if ! isNginxProxyRunning; then
+		if ! portsFree; then
+			echo "Please make sure ports 80 and 443 are free."
+		else
+			docker run --name nginx-proxy --restart always -d -p 80:80 -p 443:443 \
+				-v /etc/nginx/htpasswd:/etc/nginx/htpasswd \
+				-v /etc/nginx/certs:/etc/nginx/certs \
+				-v /etc/nginx/conf.d:/etc/nginx/conf.d \
+				-v /var/run/docker.sock:/tmp/docker.sock:ro \
+				jwilder/nginx-proxy
+		fi
+	fi
 }
 
 # fail_trap is executed if an error occurs.
