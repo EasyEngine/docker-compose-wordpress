@@ -1,0 +1,101 @@
+#!/usr/bin/env bash
+
+PROJECT_NAME="eev4"
+REPO_URL="https://github.com/EasyEngine/docker-compose-wordpress"
+VERSION="master"
+
+# runs the given command as root (detects if we are root already)
+runAsRoot() {
+	local CMD="$*"
+
+	if [ $EUID -ne 0 ]; then
+		CMD="sudo $CMD"
+	fi
+
+	$CMD
+}
+
+# fail_trap is executed if an error occurs.
+fail_trap() {
+	result=$?
+	if [ "$result" != "0" ]; then
+		echo -e "\n\nFailed to install $PROJECT_NAME"
+		echo "For support, go to https://github.com/EasyEngine/docker-compose-wordpress."
+	fi
+	cleanup
+	exit $result
+}
+
+# cleanup temporary files
+cleanup() {
+	rm -rf "$EE_TMP_ROOT"
+}
+
+# checks dependencies requried to run this setup
+checkDependencies() {
+	dependencies=(
+	"git^git - https://git-scm.com/downloads"
+	"docker^docker - https://docs.docker.com/engine/installation"
+	"docker-compose^docker-compose - https://docs.docker.com/compose/install" )
+
+	pass=0
+
+	for dependency in "${dependencies[@]}" ; do
+		dep="${dependency%%^*}"
+		msg="${dependency##*^}"
+		if ! type "$dep" > /dev/null 2>&1; then
+			echo "Please install $msg"
+			pass=1
+		fi
+	done
+
+	return $pass
+}
+
+# cloneRepo clones the repository to a temporary location
+cloneRepo() {
+	EE_TMP_ROOT="$(mktemp -dt ee-installer-XXXXXX)"
+	EE_TMP_REPO="$EE_TMP_ROOT/docker-compose-wordpress"
+	echo "Clone repo $REPO_URL"
+	git clone -b "$VERSION" "$REPO_URL" "$EE_TMP_REPO"
+}
+
+# installScript installs the main script.
+installScript() {
+	EE_INSTALL_DIR="/opt/$PROJECT_NAME"
+	EE_SCRIPT="scripts/eev4"
+	EE_SCRIPT_INSTALL_PATH="/usr/local/bin/eev4"
+
+	rm -rf "$EE_INSTALL_DIR"
+	echo "Preparing to install into $EE_INSTALL_DIR"
+	runAsRoot cp -r "$EE_TMP_REPO" "$EE_INSTALL_DIR"
+	runAsRoot ln -s "$EE_INSTALL_DIR/$EE_SCRIPT" "$EE_SCRIPT_INSTALL_PATH"
+	echo -e "\nInstall complete!"
+	echo "Run '$PROJECT_NAME' to get started."
+}
+
+# testVersion tests the installed script to make sure it is working.
+testInstalled() {
+	EE_INSTALLED="$(which $PROJECT_NAME)"
+	if [ "$?" = "1" ]; then
+		return 1
+	else
+		echo "$PROJECT_NAME already installed into $EE_INSTALLED"
+		return 0
+	fi
+}
+
+# Execution
+
+#Stop execution on any error
+trap "fail_trap" EXIT
+set -e
+
+if ! testInstalled; then
+	if ! checkDependencies; then
+		exit 1;
+	fi
+	cloneRepo
+	installScript
+fi
+cleanup
