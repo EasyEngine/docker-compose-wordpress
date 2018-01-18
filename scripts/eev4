@@ -26,6 +26,7 @@ help () {
 	echo -e "\nCommands: "
 	echo -e "\tcreate\t\t\tCreate new site"
 	echo -e "\tdelete\t\t\tDelete existing site"
+	echo -e "\twp\t\t\tUse wp-cli with a site"
 
 	echo -e "\nUsage:  eev4 create SITE [Options]"
 	echo -e "\nOptions:"
@@ -34,6 +35,9 @@ help () {
 	echo -e "\t[--wpsubdomain ]\tWordPress Multisite with Subdomains"
 
 	echo -e "\nUsage:  eev4 delete SITE"
+
+	echo -e "\nUsage:  eev4 wp SITE [ARG...]"
+	echo -e "\te.g. eev4 wp example.com theme list"
 }
 
 singleWordPress() {
@@ -62,7 +66,7 @@ singleWordPress() {
 	#  Start the containers
 	###
 	pushd "$WEBROOT/$SITE_NAME" > /dev/null 2>&1
-	docker-compose up -d
+		docker-compose up -d
 	popd > /dev/null 2>&1
 
 	echo "$SITE_NAME created."
@@ -84,13 +88,19 @@ deleteSingleWordPress() {
 	read -p "Are you sure you want to delete the site?(y/N) " -n 1 -r
 	if [[ $REPLY =~ ^[Yy]$ ]]; then
 		pushd "$WEBROOT/$SITE_NAME" > /dev/null 2>&1
-		docker-compose down -v
+			docker-compose down -v
 		popd > /dev/null 2>&1
 
 		sudo rm -rf "$WEBROOT/$SITE_NAME"
 		docker network disconnect "$SITE_NAME" nginx-proxy
 		docker network rm "$SITE_NAME"
 	fi
+}
+
+runWpCliCommand() {
+	pushd "$WEBROOT/$SITE_NAME" > /dev/null 2>&1
+		docker-compose exec --user=www-data php wp "${@}"
+	popd > /dev/null 2>&1
 }
 
 removeHost() {
@@ -209,11 +219,11 @@ while [[ $# -gt 0 ]]; do
 							exit 0
 							;;
 						'--wpsubdir')
-							multisiteSubdirectory
+							singleWordPress
 							exit 0
 							;;
 						'--wpsubdomain')
-							multisiteSubdomain
+							singleWordPress
 							exit 0
 							;;
 					esac
@@ -241,6 +251,9 @@ while [[ $# -gt 0 ]]; do
 			shift
 			if [[ $# -ne 0 ]]; then
 				export SITE_NAME="${1}"
+				shift
+				runWpCliCommand "${@}"
+				exit 0
 			else
 				echo -e "Please provide name of site."
 				exit 0
