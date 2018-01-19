@@ -26,6 +26,7 @@ help () {
 	echo -e "\nCommands: "
 	echo -e "\tcreate\t\t\tCreate new site"
 	echo -e "\tdelete\t\t\tDelete existing site"
+	echo -e "\trestart\t\t\tReload configuration for existing site"
 	echo -e "\twp\t\t\tUse wp-cli with a site"
 
 	echo -e "\nUsage:  eev4 create SITE [Options]"
@@ -95,6 +96,12 @@ deleteSingleWordPress() {
 		docker network disconnect "$SITE_NAME" nginx-proxy
 		docker network rm "$SITE_NAME"
 	fi
+}
+
+restartSingleWordPress() {
+	pushd "$WEBROOT/$SITE_NAME" > /dev/null 2>&1
+		docker-compose restart
+	popd > /dev/null 2>&1
 }
 
 runWpCliCommand() {
@@ -242,6 +249,16 @@ while [[ $# -gt 0 ]]; do
 				if [[ $# -ne 0 ]]; then
 					export SITE_NAME="${1}"
 					deleteSingleWordPress
+				else
+					echo -e "Please provide name of site."
+					exit 0
+				fi
+			;;
+		'restart')
+				shift
+				if [[ $# -ne 0 ]]; then
+					export SITE_NAME="${1}"
+					restartSingleWordPress
 				else
 					echo -e "Please provide name of site."
 					exit 0
