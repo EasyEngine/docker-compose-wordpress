@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-PROJECT_NAME="eev4"
+PROJECT_NAME="ee4"
 EE_INSTALL_DIR="/opt/$PROJECT_NAME"
 ETC_HOSTS=/etc/hosts
 LOCALHOST_IP="127.0.0.1"
@@ -19,7 +19,7 @@ runAsRoot() {
 
 # help provides possible cli arguments
 help () {
-	echo -e "\nUsage:  eev4 [Global Options]"
+	echo -e "\nUsage:  ee4 [Global Options]"
 	echo -e "\nGlobal Options:"
 	echo -e "\t[--help|-h ]\t\tprints this help"
 
@@ -29,16 +29,16 @@ help () {
 	echo -e "\trestart\t\t\tReload configuration for existing site"
 	echo -e "\twp\t\t\tUse wp-cli with a site"
 
-	echo -e "\nUsage:  eev4 create SITE [Options]"
+	echo -e "\nUsage:  ee4 create SITE [Options]"
 	echo -e "\nOptions:"
 	echo -e "\t[--wp ]\t\t\tWordPress Site"
 	echo -e "\t[--wpsubdir ]\t\tWordPress Multisite with Subdirectory"
 	echo -e "\t[--wpsubdomain ]\tWordPress Multisite with Subdomains"
 
-	echo -e "\nUsage:  eev4 delete SITE"
+	echo -e "\nUsage:  ee4 delete SITE"
 
-	echo -e "\nUsage:  eev4 wp SITE [ARG...]"
-	echo -e "\te.g. eev4 wp example.com theme list"
+	echo -e "\nUsage:  ee4 wp SITE [ARG...]"
+	echo -e "\te.g. ee4 wp example.com theme list"
 }
 
 singleWordPress() {

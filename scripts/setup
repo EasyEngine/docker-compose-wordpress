@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-PROJECT_NAME="eev4"
+PROJECT_NAME="ee4"
 REPO_URL="https://github.com/EasyEngine/docker-compose-wordpress"
 VERSION="master"
 
@@ -63,8 +63,8 @@ cloneRepo() {
 # installScript installs the main script.
 installScript() {
 	EE_INSTALL_DIR="/opt/$PROJECT_NAME"
-	EE_SCRIPT="scripts/eev4"
-	EE_SCRIPT_INSTALL_PATH="/usr/local/bin/eev4"
+	EE_SCRIPT="scripts/ee4"
+	EE_SCRIPT_INSTALL_PATH="/usr/local/bin/ee4"
 
 	rm -rf "$EE_INSTALL_DIR"
 	echo "Preparing to install into $EE_INSTALL_DIR"
