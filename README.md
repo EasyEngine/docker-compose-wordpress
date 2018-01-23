@@ -28,27 +28,27 @@ bash setup.sh
 1. Create a WordPress site
 
 ```shell
-eev4 create example.com --wp
+ee4 create example.com --wp
 ```
 
 2. Delete a site
 ```shell
-eev4 delete example.com
+ee4 delete example.com
 ```
 
 3. Use wp-cli with a site
 ```shell
-eev4 wp example.com theme list
+ee4 wp example.com theme list
 ```
 
-Run `eev4 --help` for all commands.
+Run `ee4 --help` for all commands.
 
 ## Configuration
 
 The sites get created at `/var/www`. You can view and change the configuration
 for any of the sites at `/var/www/SITE/config`
 
-Run `eev4 restart SITE` to load new configuration.
+Run `ee4 restart SITE` to load new configuration.
 
 ## Contributing
 
