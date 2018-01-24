@@ -60,6 +60,7 @@ singleWordPress() {
 	###
 	echo "Configuring network..." && sleep 1
 	runNginxProxy
+	runLetsEncrypt
 	docker network create $SITE_NAME
 	docker network connect $SITE_NAME nginx-proxy
 
@@ -175,8 +176,20 @@ runNginxProxy() {
 				-v /etc/nginx/certs:/etc/nginx/certs \
 				-v /etc/nginx/conf.d:/etc/nginx/conf.d \
 				-v /var/run/docker.sock:/tmp/docker.sock:ro \
+				--network $SITE_NAME \
 				jwilder/nginx-proxy
 		fi
+	fi
+}
+
+# run JrCs/docker-letsencrypt-nginx-proxy-companion container
+runLetsEncrypt() {
+	if isNginxProxyRunning; then
+		docker run -d --name letsencrypt \
+			-v /var/run/docker.sock:/var/run/docker.sock:ro \
+			--volume-from nginx-proxy \
+			--network $SITE_NAME \
+			jrcs/letsencrypt-nginx-proxy-companion
 	fi
 }
 
