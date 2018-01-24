@@ -4,7 +4,6 @@ PROJECT_NAME="ee4"
 EE_INSTALL_DIR="/opt/$PROJECT_NAME"
 ETC_HOSTS=/etc/hosts
 LOCALHOST_IP="127.0.0.1"
-WEBROOT="/var/www"
 
 # runs the given command as root (detects if we are root already)
 runAsRoot() {
@@ -43,7 +42,9 @@ help () {
 
 singleWordPress() {
 	echo "Installing WordPress site $SITE_NAME"
-	mkdir -p "$WEBROOT" > /dev/null 2>&1
+	if ! [[ -d "$WEBROOT" ]]; then
+		runAsRoot mkdir -p "$WEBROOT" > /dev/null 2>&1
+	fi
 
 	###
 	#  Setup site configuration
@@ -195,12 +196,39 @@ fail_trap() {
 	exit $result
 }
 
+initEE4() {
+	if ! [[ -d ~/.ee4 ]]; then
+		mkdir ~/.ee4
+	fi
+
+	if [[ $# -eq 0 ]]; then
+		read -p "Where would you like to create your sites(default: ~/Documents/Sites): "
+		WEBROOT="${REPLY:-~/Documents/Sites}"
+	elif [[ $# -eq 1 ]]; then
+		WEBROOT="$1"
+	fi
+
+	echo "WEBROOT=$WEBROOT" > ~/.ee4/config
+}
+
+updateEE4() {
+	REPO_URL="${1:-https://github.com/EasyEngine/docker-compose-wordpress}"
+	VERSION="${2:-master}"
+
+	echo "git pull -b "$VERSION" "$REPO_URL""
+
+	pushd "$EE_INSTALL_DIR" > /dev/null 2>&1
+		git pull "$REPO_URL" "$VERSION"
+	popd > /dev/null 2>&1
+}
 
 # Execution
 
 #Stop execution on any error
 trap "fail_trap" EXIT
 set -e
+
+[[ -f ~/.ee4/config ]] && source ~/.ee4/config || initEE4
 
 # Parsing input arguments (if any)
 export INPUT_ARGUMENTS="${@}"
@@ -254,6 +282,14 @@ while [[ $# -gt 0 ]]; do
 					exit 0
 				fi
 			;;
+		'init')
+				shift
+				if [[ $# -ne 0 ]]; then
+					initEE4 $1
+				else
+					initEE4
+				fi
+			;;
 		'restart')
 				shift
 				if [[ $# -ne 0 ]]; then
@@ -263,6 +299,20 @@ while [[ $# -gt 0 ]]; do
 					echo -e "Please provide name of site."
 					exit 0
 				fi
+			;;
+		'update')
+			shift
+			if [[ $# -eq 0 ]]; then
+				updateEE4
+				exit 0
+			elif [[ $# -eq 1 ]]; then
+				#statements
+				updateEE4 $1 master
+				exit 0
+			elif [[ $# -eq 2 ]]; then
+				updateEE4 $1 $2
+				exit 0
+			fi
 			;;
 		'wp')
 			shift
