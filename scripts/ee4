@@ -210,13 +210,15 @@ runNginxProxyAndLetsEncrypt() {
 			docker run --name nginx-proxy --restart always -d -p 80:80 -p 443:443 \
 				-v /etc/nginx/htpasswd:/etc/nginx/htpasswd \
 				-v /etc/nginx/certs:/etc/nginx/certs \
+				-v /etc/nginx/vhost.d \
+				-v /usr/share/nginx/html \
 				-v /etc/nginx/conf.d:/etc/nginx/conf.d \
 				-v /var/run/docker.sock:/tmp/docker.sock:ro \
 				jwilder/nginx-proxy
 
 			docker run -d --name letsencrypt \
 				-v /var/run/docker.sock:/var/run/docker.sock:ro \
-				--volume-from nginx-proxy \
+				--volumes-from nginx-proxy \
 				jrcs/letsencrypt-nginx-proxy-companion
 		fi
 	fi
