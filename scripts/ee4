@@ -131,6 +131,9 @@ deleteSingleWordPress() {
 
 		sudo rm -rf "$WEBROOT/$SITE_NAME"
 		docker network disconnect "$SITE_NAME" nginx-proxy
+		if isContainerConnected letsencrypt; then
+			docker network disconnect "$SITE_NAME" letsencrypt
+		fi
 		docker network rm "$SITE_NAME"
 	fi
 }
@@ -197,6 +200,21 @@ isNginxProxyRunning() {
 		return 0
 	else
 		# For any exit code other than 0, return 1.
+		return 1
+	fi
+}
+
+# check if Container is connected to network
+isContainerConnected() {
+	docker inspect -f '{{range $p, $conf := .NetworkSettings.Networks}}
+	{{if ne $p "bridge"}}
+	{{$p}}
+	{{end}}
+	{{end}}' $1 | grep $SITE_NAME > /dev/null 2>&1
+
+	if [[ $? == 0 ]]; then
+		return 0
+	else
 		return 1
 	fi
 }
