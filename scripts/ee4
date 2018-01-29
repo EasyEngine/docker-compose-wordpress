@@ -60,9 +60,46 @@ singleWordPress() {
 	#  Setup site networking
 	###
 	echo "Configuring network..." && sleep 1
-	runNginxProxy
+	runNginxProxyAndLetsEncrypt
 	docker network create $SITE_NAME
 	docker network connect $SITE_NAME nginx-proxy
+
+	###
+	#  Start the containers
+	###
+	pushd "$WEBROOT/$SITE_NAME" > /dev/null 2>&1
+		docker-compose up -d
+	popd > /dev/null 2>&1
+
+	echo "$SITE_NAME created."
+	read -p "Would you like to add domain to /etc/host?(y/N) " -n 1 -r
+	if [[ $REPLY =~ ^[Yy]$ ]]; then
+		addHost "$SITE_NAME"
+	fi
+}
+
+singleWordPressLetsEncrypt() {
+	echo "Installing WordPress site $SITE_NAME"
+	mkdir -p "$WEBROOT" > /dev/null 2>&1
+
+	###
+	#  Setup site configuration
+	###
+	echo "Configuring project..." && sleep 1
+	mkdir -p "$WEBROOT/$SITE_NAME" > /dev/null 2>&1
+	cp "$EE_INSTALL_DIR/docker-compose.yml" "$WEBROOT/$SITE_NAME"
+	cp -r "$EE_INSTALL_DIR/config" "$WEBROOT/$SITE_NAME"
+	mv "$WEBROOT/$SITE_NAME/config/.env.example" "$WEBROOT/$SITE_NAME/.env"
+	sed -i.bak "s/\(VIRTUAL_HOST=\)\(site1.test\)/\1$SITE_NAME/" "$WEBROOT/$SITE_NAME/.env"
+
+	###
+	#  Setup site networking
+	###
+	echo "Configuring network..." && sleep 1
+	runNginxProxyAndLetsEncrypt
+	docker network create $SITE_NAME
+	docker network connect $SITE_NAME nginx-proxy
+	docker network connect $SITE_NAME letsencrypt
 
 	###
 	#  Start the containers
@@ -95,6 +132,9 @@ deleteSingleWordPress() {
 
 		sudo rm -rf "$WEBROOT/$SITE_NAME"
 		docker network disconnect "$SITE_NAME" nginx-proxy
+		if isContainerConnected letsencrypt; then
+			docker network disconnect "$SITE_NAME" letsencrypt
+		fi
 		docker network rm "$SITE_NAME"
 	fi
 }
@@ -165,8 +205,23 @@ isNginxProxyRunning() {
 	fi
 }
 
-# run jwilder/nginx-proxy container
-runNginxProxy() {
+# check if Container is connected to network
+isContainerConnected() {
+	docker inspect -f '{{range $p, $conf := .NetworkSettings.Networks}}
+	{{if ne $p "bridge"}}
+	{{$p}}
+	{{end}}
+	{{end}}' $1 | grep $SITE_NAME > /dev/null 2>&1
+
+	if [[ $? == 0 ]]; then
+		return 0
+	else
+		return 1
+	fi
+}
+
+# run jwilder/nginx-proxy and JrCs/docker-letsencrypt-nginx-proxy-companion container
+runNginxProxyAndLetsEncrypt() {
 	if ! isNginxProxyRunning; then
 		if ! portsFree; then
 			echo "Please make sure ports 80 and 443 are free."
@@ -174,9 +229,16 @@ runNginxProxy() {
 			docker run --name nginx-proxy --restart always -d -p 80:80 -p 443:443 \
 				-v /etc/nginx/htpasswd:/etc/nginx/htpasswd \
 				-v /etc/nginx/certs:/etc/nginx/certs \
+				-v /etc/nginx/vhost.d \
+				-v /usr/share/nginx/html \
 				-v /etc/nginx/conf.d:/etc/nginx/conf.d \
 				-v /var/run/docker.sock:/tmp/docker.sock:ro \
 				jwilder/nginx-proxy
+
+			docker run -d --name letsencrypt \
+				-v /var/run/docker.sock:/var/run/docker.sock:ro \
+				--volumes-from nginx-proxy \
+				jrcs/letsencrypt-nginx-proxy-companion
 		fi
 	fi
 }
@@ -250,6 +312,15 @@ while [[ $# -gt 0 ]]; do
 				if [[ $# -ne 0 ]]; then
 					case $1 in
 						'--wp')
+							shift
+							if [[ $# -ne 0 ]]; then
+								case $1 in
+									'--le')
+										singleWordPressLetsEncrypt
+										exit 0
+										;;
+								esac
+							fi
 							singleWordPress
 							exit 0
 							;;
