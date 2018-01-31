@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 
 PROJECT_NAME="ee4"
-EE_INSTALL_DIR="/opt/$PROJECT_NAME"
 ETC_HOSTS=/etc/hosts
 LOCALHOST_IP="127.0.0.1"
 
@@ -270,7 +269,7 @@ initEE4() {
 		WEBROOT="$1"
 	fi
 
-	echo "WEBROOT=$WEBROOT" > ~/.ee4/config
+	echo "WEBROOT=$WEBROOT" >> ~/.ee4/config
 }
 
 updateEE4() {
@@ -290,7 +289,14 @@ updateEE4() {
 trap "fail_trap" EXIT
 set -e
 
-[[ -f ~/.ee4/config ]] && source ~/.ee4/config || initEE4
+if [[ -f ~/.ee4/config ]]; then
+	grep 'WEBROOT' ~/.ee4/config  > /dev/null 2>&1
+	if [[ $? -eq 0 ]]; then
+		source ~/.ee4/config
+	else
+		initEE4
+	fi
+fi
 
 # Parsing input arguments (if any)
 export INPUT_ARGUMENTS="${@}"
