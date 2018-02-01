@@ -31,6 +31,7 @@ help () {
 	echo -e "\tdelete\t\t\tDelete existing site"
 	echo -e "\trestart\t\t\tReload configuration for existing site"
 	echo -e "\twp\t\t\tUse wp-cli with a site"
+	echo -e "\tupdate\t\t\tUpdate ee4"
 
 	echo -e "\nUsage:  ee4 create SITE [Options]"
 	echo -e "\nOptions:"
