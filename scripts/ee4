@@ -277,8 +277,8 @@ initEE4() {
 	fi
 
 	if [[ $# -eq 0 ]]; then
-		read -p "Where would you like to create your sites(default: ~/Documents/Sites): "
-		WEBROOT="${REPLY:-~/Documents/Sites}"
+		read -p "Where would you like to create your sites(default: ~/Sites): "
+		WEBROOT="${REPLY:-~/Sites}"
 	elif [[ $# -eq 1 ]]; then
 		WEBROOT="$1"
 	fi
@@ -289,12 +289,13 @@ initEE4() {
 updateEE4() {
 	REPO_URL="${1:-https://github.com/EasyEngine/docker-compose-wordpress}"
 	VERSION="${2:-master}"
+	EE_TMP_ROOT="$(mktemp -dt ee-installer-XXXXXX)"
+	EE_TMP_REPO="$EE_TMP_ROOT/docker-compose-wordpress"
 
-	echo "git pull -b "$VERSION" "$REPO_URL""
-
-	pushd "$EE_INSTALL_DIR" > /dev/null 2>&1
-		git pull "$REPO_URL" "$VERSION"
-	popd > /dev/null 2>&1
+	echo "Updating ee4"
+	git clone -b "$VERSION" "$REPO_URL" "$EE_TMP_REPO"
+	runAsRoot cp -r "$EE_TMP_REPO/*" "$EE_INSTALL_DIR"
+	rm -rf "$EE_TMP_ROOT"
 }
 
 # Execution

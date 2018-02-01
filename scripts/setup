@@ -71,7 +71,6 @@ cloneRepo() {
 	EE_TMP_REPO="$EE_TMP_ROOT/docker-compose-wordpress"
 	echo "Clone repo $REPO_URL"
 	git clone -b "$VERSION" "$REPO_URL" "$EE_TMP_REPO"
-	ls -al "$EE_TMP_REPO"
 }
 
 # installScript installs the main script.
@@ -86,9 +85,7 @@ installScript() {
 
 	rm -rf "$EE_INSTALL_DIR"
 	echo "Preparing to install into $EE_INSTALL_DIR"
-	ls -al "$EE_TMP_REPO"
 	runAsRoot cp -r "$EE_TMP_REPO" "$EE_INSTALL_DIR"
-	ls -al "$EE_INSTALL_DIR"
 	runAsRoot ln -s "$EE_INSTALL_DIR/$EE_SCRIPT" "$EE_SCRIPT_INSTALL_PATH"
 	echo -e "\nInstall complete!"
 	initEE4
@@ -120,4 +117,4 @@ if ! testInstalled; then
 	cloneRepo
 	installScript
 fi
-# cleanup
+cleanup
