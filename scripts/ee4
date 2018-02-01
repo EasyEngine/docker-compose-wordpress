@@ -28,11 +28,13 @@ help () {
 	echo -e "\trestart\t\t\tReload configuration for existing site"
 	echo -e "\twp\t\t\tUse wp-cli with a site"
 
-	echo -e "\nUsage:  ee4 create SITE [Options]"
+	echo -e "\nUsage:  ee4 create SITE [Options] [Suboptions]"
 	echo -e "\nOptions:"
 	echo -e "\t[--wp ]\t\t\tWordPress Site"
 	echo -e "\t[--wpsubdir ]\t\tWordPress Multisite with Subdirectory"
 	echo -e "\t[--wpsubdomain ]\tWordPress Multisite with Subdomains"
+	echo -e "\nSuboptions:"
+	echo -e "\t[--le]\t\t\tEnable LetsEncrypt Only with --wp"
 
 	echo -e "\nUsage:  ee4 delete SITE"
 
