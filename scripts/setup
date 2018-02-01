@@ -7,11 +7,6 @@ VERSION="${VERSION:-master}"
 # initOS discovers the operating system for this system.
 initOS() {
 	OS=$(echo `uname`|tr '[:upper:]' '[:lower:]')
-
-	case "$OS" in
-		# Minimalist GNU for Windows
-		mingw*) OS='windows';;
-	esac
 }
 
 # runs the given command as root (detects if we are root already)
@@ -62,12 +57,21 @@ checkDependencies() {
 	return $pass
 }
 
+initEE4() {
+	if ! [[ -d ~/.ee4 ]]; then
+		mkdir ~/.ee4
+	fi
+
+	echo "EE_INSTALL_DIR=$EE_INSTALL_DIR" >> ~/.ee4/config
+}
+
 # cloneRepo clones the repository to a temporary location
 cloneRepo() {
 	EE_TMP_ROOT="$(mktemp -dt ee-installer-XXXXXX)"
 	EE_TMP_REPO="$EE_TMP_ROOT/docker-compose-wordpress"
 	echo "Clone repo $REPO_URL"
 	git clone -b "$VERSION" "$REPO_URL" "$EE_TMP_REPO"
+	ls -al "$EE_TMP_REPO"
 }
 
 # installScript installs the main script.
@@ -82,19 +86,13 @@ installScript() {
 
 	rm -rf "$EE_INSTALL_DIR"
 	echo "Preparing to install into $EE_INSTALL_DIR"
+	ls -al "$EE_TMP_REPO"
 	runAsRoot cp -r "$EE_TMP_REPO" "$EE_INSTALL_DIR"
+	ls -al "$EE_INSTALL_DIR"
 	runAsRoot ln -s "$EE_INSTALL_DIR/$EE_SCRIPT" "$EE_SCRIPT_INSTALL_PATH"
 	echo -e "\nInstall complete!"
 	initEE4
 	echo "Run '$PROJECT_NAME' to get started."
-}
-
-initEE4() {
-	if ! [[ -d ~/.ee4 ]]; then
-		mkdir ~/.ee4
-	fi
-
-	echo "EE_INSTALL_DIR=$EE_INSTALL_DIR" >> ~/.ee4/config
 }
 
 # testVersion tests the installed script to make sure it is working.
@@ -122,4 +120,4 @@ if ! testInstalled; then
 	cloneRepo
 	installScript
 fi
-cleanup
+# cleanup

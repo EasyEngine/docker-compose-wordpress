@@ -4,6 +4,11 @@ PROJECT_NAME="ee4"
 ETC_HOSTS=/etc/hosts
 LOCALHOST_IP="127.0.0.1"
 
+# initOS discovers the operating system for this system.
+initOS() {
+	OS=$(echo `uname`|tr '[:upper:]' '[:lower:]')
+}
+
 # runs the given command as root (detects if we are root already)
 runAsRoot() {
 	local CMD="$*"
@@ -54,13 +59,15 @@ singleWordPress() {
 	cp -r "$EE_INSTALL_DIR/config" "$WEBROOT/$SITE_NAME"
 	mv "$WEBROOT/$SITE_NAME/config/.env.example" "$WEBROOT/$SITE_NAME/.env"
 	sed -i.bak "s/\(VIRTUAL_HOST=\)\(site1.test\)/\1$SITE_NAME/" "$WEBROOT/$SITE_NAME/.env"
+	sed -i.bak "/^.*LETSENCRYPT.*/d" "$WEBROOT/$SITE_NAME/docker-compose.yml"
+	find "$WEBROOT/$SITE_NAME" -mindepth 1 -maxdepth 3 -name '*.bak' -exec rm {} \;
 
 	###
 	#  Setup site networking
 	###
 	echo "Configuring network..." && sleep 1
 	runNginxProxyAndLetsEncrypt
-	docker network create $SITE_NAME
+	docker network create $SITE_NAME > /dev/null 2>&1
 	docker network connect $SITE_NAME nginx-proxy
 
 	###
@@ -90,13 +97,14 @@ singleWordPressLetsEncrypt() {
 	cp -r "$EE_INSTALL_DIR/config" "$WEBROOT/$SITE_NAME"
 	mv "$WEBROOT/$SITE_NAME/config/.env.example" "$WEBROOT/$SITE_NAME/.env"
 	sed -i.bak "s/\(VIRTUAL_HOST=\)\(site1.test\)/\1$SITE_NAME/" "$WEBROOT/$SITE_NAME/.env"
+	find "$WEBROOT/$SITE_NAME" -mindepth 1 -maxdepth 3 -name '*.bak' -exec rm {} \;
 
 	###
 	#  Setup site networking
 	###
 	echo "Configuring network..." && sleep 1
 	runNginxProxyAndLetsEncrypt
-	docker network create $SITE_NAME
+	docker network create $SITE_NAME > /dev/null 2>&1
 	docker network connect $SITE_NAME nginx-proxy
 	docker network connect $SITE_NAME letsencrypt
 
@@ -136,6 +144,7 @@ deleteSingleWordPress() {
 		fi
 		docker network rm "$SITE_NAME"
 	fi
+	removeHost "$SITE_NAME"
 }
 
 restartSingleWordPress() {
@@ -185,8 +194,13 @@ portsFree() {
 	free=0
 	for port in "${ports[@]}" ; do
 		# count the number of occurrences of $port in output: 1 = in use; 0 = not in use
-		result=$(ss -ln src :$port | grep -Ec -e "\<$port\>")
-		if [ "$result" -eq 1 ]; then
+		if [[ "$OS" == 'linux' ]]; then
+			checkPortCMD="netstat -lnp tcp | grep "
+		elif [[ "$OS" == 'darwin' ]]; then
+			checkPortCMD="netstat -anp tcp | grep LISTEN | grep "
+		fi
+		runAsRoot $checkPortCMD $port > /dev/null 2>&1
+		if [ "$?" -eq 1 ]; then
 			free=1
 		fi
 	done
@@ -226,11 +240,11 @@ runNginxProxyAndLetsEncrypt() {
 			echo "Please make sure ports 80 and 443 are free."
 		else
 			docker run --name nginx-proxy --restart always -d -p 80:80 -p 443:443 \
-				-v /etc/nginx/htpasswd:/etc/nginx/htpasswd \
-				-v /etc/nginx/certs:/etc/nginx/certs \
-				-v /etc/nginx/vhost.d \
-				-v /usr/share/nginx/html \
-				-v /etc/nginx/conf.d:/etc/nginx/conf.d \
+				-v ~/.ee4/etc/nginx/certs:/etc/nginx/certs \
+				-v ~/.ee4/etc/nginx/conf.d:/etc/nginx/conf.d \
+				-v ~/.ee4/etc/nginx/htpasswd:/etc/nginx/htpasswd \
+				-v ~/.ee4/etc/nginx/vhost.d:/etc/nginx/vhost.d \
+				-v ~/.ee4/usr/share/nginx/html:/usr/share/nginx/html \
 				-v /var/run/docker.sock:/tmp/docker.sock:ro \
 				jwilder/nginx-proxy
 
@@ -285,10 +299,6 @@ updateEE4() {
 
 # Execution
 
-#Stop execution on any error
-trap "fail_trap" EXIT
-set -e
-
 if [[ -f ~/.ee4/config ]]; then
 	grep 'WEBROOT' ~/.ee4/config  > /dev/null 2>&1
 	if [[ $? -eq 0 ]]; then
@@ -298,6 +308,11 @@ if [[ -f ~/.ee4/config ]]; then
 	fi
 fi
 
+#Stop execution on any error
+trap "fail_trap" EXIT
+set -e
+
+initOS
 # Parsing input arguments (if any)
 export INPUT_ARGUMENTS="${@}"
 set -u
