@@ -41,6 +41,11 @@ ee4 delete example.com
 ee4 wp example.com theme list
 ```
 
+4. Create a Wordpress Site with SSL
+```shell
+ee4 create example.com --wp --le
+```
+
 Run `ee4 --help` for all commands.
 
 ## Configuration
