@@ -4,6 +4,10 @@ PROJECT_NAME="ee4"
 REPO_URL="${REPO_URL:-https://github.com/EasyEngine/docker-compose-wordpress}"
 VERSION="${VERSION:-master}"
 
+# initOS discovers the operating system for this system.
+initOS() {
+	OS=$(echo `uname`|tr '[:upper:]' '[:lower:]')
+}
 
 # runs the given command as root (detects if we are root already)
 runAsRoot() {
@@ -53,6 +57,14 @@ checkDependencies() {
 	return $pass
 }
 
+initEE4() {
+	if ! [[ -d ~/.ee4 ]]; then
+		mkdir ~/.ee4
+	fi
+
+	echo "EE_INSTALL_DIR=$EE_INSTALL_DIR" >> ~/.ee4/config
+}
+
 # cloneRepo clones the repository to a temporary location
 cloneRepo() {
 	EE_TMP_ROOT="$(mktemp -dt ee-installer-XXXXXX)"
@@ -63,7 +75,11 @@ cloneRepo() {
 
 # installScript installs the main script.
 installScript() {
-	EE_INSTALL_DIR="${EE_INSTALL_DIR:-/opt/$PROJECT_NAME}"
+	if [[ "$OS" == 'linux' ]]; then
+		EE_INSTALL_DIR="${EE_INSTALL_DIR:-/opt/$PROJECT_NAME}"
+	elif [[ "$OS" == 'darwin' ]]; then
+		EE_INSTALL_DIR="${EE_INSTALL_DIR:-/Applications/$PROJECT_NAME}"
+	fi
 	EE_SCRIPT="scripts/ee4"
 	EE_SCRIPT_INSTALL_PATH="${EE_SCRIPT_INSTALL_PATH:-/usr/local/bin/ee4}"
 
@@ -72,6 +88,7 @@ installScript() {
 	runAsRoot cp -r "$EE_TMP_REPO" "$EE_INSTALL_DIR"
 	runAsRoot ln -s "$EE_INSTALL_DIR/$EE_SCRIPT" "$EE_SCRIPT_INSTALL_PATH"
 	echo -e "\nInstall complete!"
+	initEE4
 	echo "Run '$PROJECT_NAME' to get started."
 }
 
@@ -92,6 +109,7 @@ testInstalled() {
 trap "fail_trap" EXIT
 set -e
 
+initOS
 if ! testInstalled; then
 	if ! checkDependencies; then
 		exit 1;

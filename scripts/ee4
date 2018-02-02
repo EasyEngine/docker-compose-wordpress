@@ -1,9 +1,13 @@
 #!/usr/bin/env bash
 
 PROJECT_NAME="ee4"
-EE_INSTALL_DIR="/opt/$PROJECT_NAME"
 ETC_HOSTS=/etc/hosts
 LOCALHOST_IP="127.0.0.1"
+
+# initOS discovers the operating system for this system.
+initOS() {
+	OS=$(echo `uname`|tr '[:upper:]' '[:lower:]')
+}
 
 # runs the given command as root (detects if we are root already)
 runAsRoot() {
@@ -18,15 +22,17 @@ runAsRoot() {
 
 # help provides possible cli arguments
 help () {
-	echo -e "\nUsage:  ee4 [Global Options]"
+	echo -e "\nUsage:  ee4 [Global Options|Commands]"
 	echo -e "\nGlobal Options:"
 	echo -e "\t[--help|-h ]\t\tprints this help"
 
 	echo -e "\nCommands: "
 	echo -e "\tcreate\t\t\tCreate new site"
+	echo -e "\tdb\t\t\tEnter mysql shell"
 	echo -e "\tdelete\t\t\tDelete existing site"
 	echo -e "\trestart\t\t\tReload configuration for existing site"
 	echo -e "\twp\t\t\tUse wp-cli with a site"
+	echo -e "\tupdate\t\t\tUpdate ee4"
 
 	echo -e "\nUsage:  ee4 create SITE [Options] [Suboptions]"
 	echo -e "\nOptions:"
@@ -42,12 +48,21 @@ help () {
 	echo -e "\te.g. ee4 wp example.com theme list"
 }
 
-singleWordPress() {
-	echo "Installing WordPress site $SITE_NAME"
+createWebroot()
+{
 	if ! [[ -d "$WEBROOT" ]]; then
-		runAsRoot mkdir -p "$WEBROOT" > /dev/null 2>&1
+		mkdir -p "$WEBROOT" > /dev/null 2>&1
+		if [ "$?" -eq 1 ]; then
+			runAsRoot mkdir -p "$WEBROOT" > /dev/null 2>&1
+			runAsRoot chown -R "$USER": "$WEBROOT"
+		fi
 	fi
+}
 
+singleWordPress() {
+	createWebroot
+
+	echo "Installing WordPress site $SITE_NAME"
 	###
 	#  Setup site configuration
 	###
@@ -57,13 +72,15 @@ singleWordPress() {
 	cp -r "$EE_INSTALL_DIR/config" "$WEBROOT/$SITE_NAME"
 	mv "$WEBROOT/$SITE_NAME/config/.env.example" "$WEBROOT/$SITE_NAME/.env"
 	sed -i.bak "s/\(VIRTUAL_HOST=\)\(site1.test\)/\1$SITE_NAME/" "$WEBROOT/$SITE_NAME/.env"
+	sed -i.bak "/^.*LETSENCRYPT.*/d" "$WEBROOT/$SITE_NAME/docker-compose.yml"
+	find "$WEBROOT/$SITE_NAME" -mindepth 1 -maxdepth 3 -name '*.bak' -exec rm {} \;
 
 	###
 	#  Setup site networking
 	###
 	echo "Configuring network..." && sleep 1
 	runNginxProxyAndLetsEncrypt
-	docker network create $SITE_NAME
+	docker network create $SITE_NAME > /dev/null 2>&1
 	docker network connect $SITE_NAME nginx-proxy
 
 	###
@@ -77,12 +94,13 @@ singleWordPress() {
 	read -p "Would you like to add domain to /etc/host?(y/N) " -n 1 -r
 	if [[ $REPLY =~ ^[Yy]$ ]]; then
 		addHost "$SITE_NAME"
+		addHost "mail.$SITE_NAME"
 	fi
 }
 
 singleWordPressLetsEncrypt() {
+	createWebroot
 	echo "Installing WordPress site $SITE_NAME"
-	mkdir -p "$WEBROOT" > /dev/null 2>&1
 
 	###
 	#  Setup site configuration
@@ -93,13 +111,14 @@ singleWordPressLetsEncrypt() {
 	cp -r "$EE_INSTALL_DIR/config" "$WEBROOT/$SITE_NAME"
 	mv "$WEBROOT/$SITE_NAME/config/.env.example" "$WEBROOT/$SITE_NAME/.env"
 	sed -i.bak "s/\(VIRTUAL_HOST=\)\(site1.test\)/\1$SITE_NAME/" "$WEBROOT/$SITE_NAME/.env"
+	find "$WEBROOT/$SITE_NAME" -mindepth 1 -maxdepth 3 -name '*.bak' -exec rm {} \;
 
 	###
 	#  Setup site networking
 	###
 	echo "Configuring network..." && sleep 1
 	runNginxProxyAndLetsEncrypt
-	docker network create $SITE_NAME
+	docker network create $SITE_NAME > /dev/null 2>&1
 	docker network connect $SITE_NAME nginx-proxy
 	docker network connect $SITE_NAME letsencrypt
 
@@ -114,6 +133,7 @@ singleWordPressLetsEncrypt() {
 	read -p "Would you like to add domain to /etc/host?(y/N) " -n 1 -r
 	if [[ $REPLY =~ ^[Yy]$ ]]; then
 		addHost "$SITE_NAME"
+		addHost "mail.$SITE_NAME"
 	fi
 }
 
@@ -139,6 +159,7 @@ deleteSingleWordPress() {
 		fi
 		docker network rm "$SITE_NAME"
 	fi
+	removeHost "$SITE_NAME"
 }
 
 restartSingleWordPress() {
@@ -153,10 +174,15 @@ runWpCliCommand() {
 	popd > /dev/null 2>&1
 }
 
+useDbShell() {
+	pushd "$WEBROOT/$SITE_NAME" > /dev/null 2>&1
+		docker-compose exec db sh -c 'mysql -p$MYSQL_ROOT_PASSWORD'
+	popd > /dev/null 2>&1
+}
+
 removeHost() {
 	HOSTNAME=$1
-	if [ -n "$(grep $HOSTNAME /etc/hosts)" ]
-	then
+	if [ -n "$(grep $HOSTNAME /etc/hosts)" ]; then
 			echo "$HOSTNAME Found in your $ETC_HOSTS, Removing now...";
 			sudo sed -i".bak" "/$HOSTNAME/d" $ETC_HOSTS
 	else
@@ -188,8 +214,13 @@ portsFree() {
 	free=0
 	for port in "${ports[@]}" ; do
 		# count the number of occurrences of $port in output: 1 = in use; 0 = not in use
-		result=$(ss -ln src :$port | grep -Ec -e "\<$port\>")
-		if [ "$result" -eq 1 ]; then
+		if [[ "$OS" == 'linux' ]]; then
+			checkPortCMD="netstat -lnp tcp | grep "
+		elif [[ "$OS" == 'darwin' ]]; then
+			checkPortCMD="netstat -anp tcp | grep LISTEN | grep "
+		fi
+		runAsRoot $checkPortCMD $port > /dev/null 2>&1
+		if [ "$?" -eq 1 ]; then
 			free=1
 		fi
 	done
@@ -229,11 +260,11 @@ runNginxProxyAndLetsEncrypt() {
 			echo "Please make sure ports 80 and 443 are free."
 		else
 			docker run --name nginx-proxy --restart always -d -p 80:80 -p 443:443 \
-				-v /etc/nginx/htpasswd:/etc/nginx/htpasswd \
-				-v /etc/nginx/certs:/etc/nginx/certs \
-				-v /etc/nginx/vhost.d \
-				-v /usr/share/nginx/html \
-				-v /etc/nginx/conf.d:/etc/nginx/conf.d \
+				-v ~/.ee4/etc/nginx/certs:/etc/nginx/certs \
+				-v ~/.ee4/etc/nginx/conf.d:/etc/nginx/conf.d \
+				-v ~/.ee4/etc/nginx/htpasswd:/etc/nginx/htpasswd \
+				-v ~/.ee4/etc/nginx/vhost.d:/etc/nginx/vhost.d \
+				-v ~/.ee4/usr/share/nginx/html:/usr/share/nginx/html \
 				-v /var/run/docker.sock:/tmp/docker.sock:ro \
 				jwilder/nginx-proxy
 
@@ -245,55 +276,45 @@ runNginxProxyAndLetsEncrypt() {
 	fi
 }
 
-# fail_trap is executed if an error occurs.
-fail_trap() {
-	result=$?
-	if [ "$result" != "0" ]; then
-		if [[ -n "$INPUT_ARGUMENTS" ]]; then
-			echo "Failed to run with the arguments provided: $INPUT_ARGUMENTS"
-			help
-		else
-			help
-		fi
-		echo -e "\tFor support, go to https://github.com/EasyEngine/docker-compose-wordpress."
-	fi
-	exit $result
-}
-
 initEE4() {
 	if ! [[ -d ~/.ee4 ]]; then
 		mkdir ~/.ee4
 	fi
 
 	if [[ $# -eq 0 ]]; then
-		read -p "Where would you like to create your sites(default: ~/Documents/Sites): "
-		WEBROOT="${REPLY:-~/Documents/Sites}"
+		read -p "Where would you like to create your sites(default: ~/Sites): "
+		WEBROOT="${REPLY:-~/Sites}"
 	elif [[ $# -eq 1 ]]; then
 		WEBROOT="$1"
 	fi
 
-	echo "WEBROOT=$WEBROOT" > ~/.ee4/config
+	echo "WEBROOT=$WEBROOT" >> ~/.ee4/config
 }
 
 updateEE4() {
 	REPO_URL="${1:-https://github.com/EasyEngine/docker-compose-wordpress}"
 	VERSION="${2:-master}"
+	EE_TMP_ROOT="$(mktemp -dt ee-installer-XXXXXX)"
+	EE_TMP_REPO="$EE_TMP_ROOT/docker-compose-wordpress"
 
-	echo "git pull -b "$VERSION" "$REPO_URL""
-
-	pushd "$EE_INSTALL_DIR" > /dev/null 2>&1
-		git pull "$REPO_URL" "$VERSION"
-	popd > /dev/null 2>&1
+	echo "Updating ee4"
+	git clone -b "$VERSION" "$REPO_URL" "$EE_TMP_REPO"
+	runAsRoot cp -r "$EE_TMP_REPO/*" "$EE_INSTALL_DIR"
+	rm -rf "$EE_TMP_ROOT"
 }
 
 # Execution
 
-#Stop execution on any error
-trap "fail_trap" EXIT
-set -e
+if [[ -f ~/.ee4/config ]]; then
+	grep 'WEBROOT' ~/.ee4/config  > /dev/null 2>&1
+	if [[ $? -eq 0 ]]; then
+		source ~/.ee4/config
+	else
+		initEE4
+	fi
+fi
 
-[[ -f ~/.ee4/config ]] && source ~/.ee4/config || initEE4
-
+initOS
 # Parsing input arguments (if any)
 export INPUT_ARGUMENTS="${@}"
 set -u
@@ -355,6 +376,17 @@ while [[ $# -gt 0 ]]; do
 					exit 0
 				fi
 			;;
+		'db')
+				shift
+				if [[ $# -ne 0 ]]; then
+					export SITE_NAME="${1}"
+					useDbShell
+				else
+					echo -e "Please provide name of site."
+					exit 0
+				fi
+			;;
+
 		'init')
 				shift
 				if [[ $# -ne 0 ]]; then
