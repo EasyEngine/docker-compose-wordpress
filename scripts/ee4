@@ -22,12 +22,13 @@ runAsRoot() {
 
 # help provides possible cli arguments
 help () {
-	echo -e "\nUsage:  ee4 [Global Options]"
+	echo -e "\nUsage:  ee4 [Global Options|Commands]"
 	echo -e "\nGlobal Options:"
 	echo -e "\t[--help|-h ]\t\tprints this help"
 
 	echo -e "\nCommands: "
 	echo -e "\tcreate\t\t\tCreate new site"
+	echo -e "\tdb\t\t\tEnter mysql shell"
 	echo -e "\tdelete\t\t\tDelete existing site"
 	echo -e "\trestart\t\t\tReload configuration for existing site"
 	echo -e "\twp\t\t\tUse wp-cli with a site"
@@ -82,6 +83,7 @@ singleWordPress() {
 	read -p "Would you like to add domain to /etc/host?(y/N) " -n 1 -r
 	if [[ $REPLY =~ ^[Yy]$ ]]; then
 		addHost "$SITE_NAME"
+		addHost "mail.$SITE_NAME"
 	fi
 }
 
@@ -120,6 +122,7 @@ singleWordPressLetsEncrypt() {
 	read -p "Would you like to add domain to /etc/host?(y/N) " -n 1 -r
 	if [[ $REPLY =~ ^[Yy]$ ]]; then
 		addHost "$SITE_NAME"
+		addHost "mail.$SITE_NAME"
 	fi
 }
 
@@ -157,6 +160,12 @@ restartSingleWordPress() {
 runWpCliCommand() {
 	pushd "$WEBROOT/$SITE_NAME" > /dev/null 2>&1
 		docker-compose exec --user=www-data php wp "${@}"
+	popd > /dev/null 2>&1
+}
+
+useDbShell() {
+	pushd "$WEBROOT/$SITE_NAME" > /dev/null 2>&1
+		docker-compose exec db sh -c 'mysql -p$MYSQL_ROOT_PASSWORD'
 	popd > /dev/null 2>&1
 }
 
@@ -376,6 +385,17 @@ while [[ $# -gt 0 ]]; do
 					exit 0
 				fi
 			;;
+		'db')
+				shift
+				if [[ $# -ne 0 ]]; then
+					export SITE_NAME="${1}"
+					useDbShell
+				else
+					echo -e "Please provide name of site."
+					exit 0
+				fi
+			;;
+
 		'init')
 				shift
 				if [[ $# -ne 0 ]]; then
