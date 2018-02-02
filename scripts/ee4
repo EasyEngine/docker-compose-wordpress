@@ -49,7 +49,11 @@ help () {
 singleWordPress() {
 	echo "Installing WordPress site $SITE_NAME"
 	if ! [[ -d "$WEBROOT" ]]; then
-		runAsRoot mkdir -p "$WEBROOT" > /dev/null 2>&1
+		mkdir -p "$WEBROOT" > /dev/null 2>&1
+		if [ "$?" -eq 1 ]; then
+			runAsRoot mkdir -p "$WEBROOT" > /dev/null 2>&1
+			runAsRoot chown -R "$USER": "$WEBROOT"
+		fi
 	fi
 
 	###
@@ -171,8 +175,7 @@ useDbShell() {
 
 removeHost() {
 	HOSTNAME=$1
-	if [ -n "$(grep $HOSTNAME /etc/hosts)" ]
-	then
+	if [ -n "$(grep $HOSTNAME /etc/hosts)" ]; then
 			echo "$HOSTNAME Found in your $ETC_HOSTS, Removing now...";
 			sudo sed -i".bak" "/$HOSTNAME/d" $ETC_HOSTS
 	else
