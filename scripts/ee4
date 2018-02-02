@@ -46,8 +46,8 @@ help () {
 	echo -e "\te.g. ee4 wp example.com theme list"
 }
 
-singleWordPress() {
-	echo "Installing WordPress site $SITE_NAME"
+createWebroot()
+{
 	if ! [[ -d "$WEBROOT" ]]; then
 		mkdir -p "$WEBROOT" > /dev/null 2>&1
 		if [ "$?" -eq 1 ]; then
@@ -55,7 +55,12 @@ singleWordPress() {
 			runAsRoot chown -R "$USER": "$WEBROOT"
 		fi
 	fi
+}
 
+singleWordPress() {
+	createWebroot
+
+	echo "Installing WordPress site $SITE_NAME"
 	###
 	#  Setup site configuration
 	###
@@ -92,8 +97,8 @@ singleWordPress() {
 }
 
 singleWordPressLetsEncrypt() {
+	createWebroot
 	echo "Installing WordPress site $SITE_NAME"
-	mkdir -p "$WEBROOT" > /dev/null 2>&1
 
 	###
 	#  Setup site configuration
@@ -269,21 +274,6 @@ runNginxProxyAndLetsEncrypt() {
 	fi
 }
 
-# fail_trap is executed if an error occurs.
-fail_trap() {
-	result=$?
-	if [ "$result" != "0" ]; then
-		if [[ -n "$INPUT_ARGUMENTS" ]]; then
-			echo "Failed to run with the arguments provided: $INPUT_ARGUMENTS"
-			help
-		else
-			help
-		fi
-		echo -e "\tFor support, go to https://github.com/EasyEngine/docker-compose-wordpress."
-	fi
-	exit $result
-}
-
 initEE4() {
 	if ! [[ -d ~/.ee4 ]]; then
 		mkdir ~/.ee4
@@ -321,10 +311,6 @@ if [[ -f ~/.ee4/config ]]; then
 		initEE4
 	fi
 fi
-
-#Stop execution on any error
-trap "fail_trap" EXIT
-set -e
 
 initOS
 # Parsing input arguments (if any)
