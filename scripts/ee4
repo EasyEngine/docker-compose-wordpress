@@ -28,7 +28,8 @@ help () {
 
 	echo -e "\nCommands: "
 	echo -e "\tcreate\t\t\tCreate new site"
-	echo -e "\tdb\t\t\tEnter mysql shell"
+    	echo -e "\tlist\t\t\tShow the list of created sites"
+    	echo -e "\tdb\t\t\tEnter mysql shell"
 	echo -e "\tdelete\t\t\tDelete existing site"
 	echo -e "\trestart\t\t\tReload configuration for existing site"
 	echo -e "\twp\t\t\tUse wp-cli with a site"
@@ -58,6 +59,17 @@ createWebroot()
 		fi
 	fi
 }
+
+# show the list of sites
+listSites() {
+    SITE_LIST=$(ls -l  $WEBROOT 2> /dev/null | awk '/^d/ {print $9}')
+    if [[ ${#SITE_LIST} -eq 0 ]]; then
+        echo -e "\e[1;31mNo sites have been created."
+    else 
+        echo -e "\n\e[1;32mList of Sites:\n\n\e[1;38;5;25m$SITE_LIST"
+    fi
+}
+
 
 singleWordPress() {
 	createWebroot
@@ -366,6 +378,9 @@ while [[ $# -gt 0 ]]; do
 				exit 0
 			fi
 			;;
+        'list')
+                listSites
+                ;;
 		'delete')
 				shift
 				if [[ $# -ne 0 ]]; then
