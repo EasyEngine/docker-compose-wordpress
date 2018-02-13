@@ -64,9 +64,9 @@ createWebroot()
 listSites() {
     SITE_LIST=$(ls -l  $WEBROOT 2> /dev/null | awk '/^d/ {print $9}')
     if [[ ${#SITE_LIST} -eq 0 ]]; then
-        echo -e "\e[1;31mNo sites have been created."
+        echo -e "No sites have been created."
     else 
-        echo -e "\n\e[1;32mList of Sites:\n\n\e[1;38;5;25m$SITE_LIST"
+        echo -e "List of Sites:\n\n$SITE_LIST"
     fi
 }
 
