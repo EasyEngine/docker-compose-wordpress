@@ -61,14 +61,22 @@ createWebroot()
 }
 
 # show the list of sites
-listSites() {
-    SITE_LIST=$(ls -l  $WEBROOT 2> /dev/null | awk '/^d/ {print $9}')
-    if [[ ${#SITE_LIST} -eq 0 ]]; then
-        echo -e "No sites have been created."
-    else 
-        echo -e "List of Sites:\n\n$SITE_LIST"
-    fi
-}
+ listSites() {
+     pushd $WEBROOT > /dev/null 2>&1
+     SITE_LIST=$(find . -mindepth 2 -maxdepth 2 -name docker-compose.yml)
+     popd > /dev/null 2>&1
+     pwd
+     if [[ ${#SITE_LIST} -eq 0 ]]; then
+         echo -e "No sites have been created."
+     else
+         echo -e "List of Sites:\n"
+         for SITE_DIR in $SITE_LIST;do
+             SITE=$(dirname $SITE_DIR | tr -d "./")
+             echo $SITE
+         done
+     fi
+ }
+
 
 
 singleWordPress() {
