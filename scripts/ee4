@@ -63,7 +63,7 @@ createWebroot()
 # show the list of sites
  listSites() {
      pushd $WEBROOT > /dev/null 2>&1
-     SITE_LIST=$(find . -mindepth 2 -maxdepth 2 -name docker-compose.yml | xargs -I{} dirname {} | tr -d "./")
+     SITE_LIST=$(find . -mindepth 2 -maxdepth 2 -name docker-compose.yml | xargs -I{} dirname {} | cut -c3-)
      popd > /dev/null 2>&1
      if [[ ${#SITE_LIST} -eq 0 ]]; then
          echo -e "No sites have been created."
