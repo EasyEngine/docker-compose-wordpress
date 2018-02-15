@@ -28,7 +28,8 @@ help () {
 
 	echo -e "\nCommands: "
 	echo -e "\tcreate\t\t\tCreate new site"
-	echo -e "\tdb\t\t\tEnter mysql shell"
+    	echo -e "\tlist\t\t\tShow the list of created sites"
+    	echo -e "\tdb\t\t\tEnter mysql shell"
 	echo -e "\tdelete\t\t\tDelete existing site"
 	echo -e "\trestart\t\t\tReload configuration for existing site"
 	echo -e "\twp\t\t\tUse wp-cli with a site"
@@ -58,6 +59,20 @@ createWebroot()
 		fi
 	fi
 }
+
+# show the list of sites
+ listSites() {
+     pushd $WEBROOT > /dev/null 2>&1
+     SITE_LIST=$(find . -mindepth 2 -maxdepth 2 -name docker-compose.yml | xargs -I{} dirname {} | cut -c3-)
+     popd > /dev/null 2>&1
+     if [[ ${#SITE_LIST} -eq 0 ]]; then
+         echo -e "No sites have been created."
+     else
+         echo -e "List of Sites:\n\n$SITE_LIST"
+     fi
+ }
+
+
 
 singleWordPress() {
 	createWebroot
@@ -366,6 +381,9 @@ while [[ $# -gt 0 ]]; do
 				exit 0
 			fi
 			;;
+        'list')
+                listSites
+                ;;
 		'delete')
 				shift
 				if [[ $# -ne 0 ]]; then
